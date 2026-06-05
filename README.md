@@ -9,7 +9,7 @@ ESPHome external component that bridges [OpenDTU](https://github.com/tbnobody/Op
 
 This component was built to feed Hoymiles microinverter production data into a **Deye 3-phase hybrid inverter** running in **AC Couple** mode with microinverters on load side.
 
-Deye expects a physical **Eastron SDM630** meter on its Modbus port (Grid Tie Meter 2, meter type Eastron in advanced settings). Instead of installing that extra meter, this bridge:
+In AC-couple mode, Deye needs an **Eastron SDM630** meter on its Modbus port (Grid Tie Meter 2, meter type Eastron in advanced settings) to report **PV production** correctly and to measure **household energy consumption** accurately. Instead of installing that physical meter, this bridge:
 
 - Reads live production data from **OpenDTU** over **WebSocket** (`/livedata`) as often as OpenDTU publishes it (up to once per second, depending on the OpenDTU poll interval)
 - Maps each microinverter to the correct grid phase (L1/L2/L3)
