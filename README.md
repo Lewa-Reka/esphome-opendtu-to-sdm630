@@ -74,15 +74,15 @@ flowchart LR
     Bterm[B]
   end
   subgraph inv [Deye_Modbus_port]
-    Aplus[A_plus]
-    Bminus[B_minus]
+    RS485Pin2[Meter_485_Pin_2]
+    RS485Pin1[Meter_485_Pin_1]
   end
   TX --> TXD
   RX --> RXD
   VCC --> VCCc
   GNDesp --> GNDc
-  Aterm -->|"twisted pair orange"| Aplus
-  Bterm -->|"twisted pair white_orange"| Bminus
+  Aterm -->|"twisted pair orange"| RS485Pin2
+  Bterm -->|"twisted pair white_orange"| RS485Pin1
 ```
 
 Connect the inverter with a standard twisted pair. From the RS485 converter, use only **A** (orange) and **B** (white-orange) to the inverter Modbus terminals. Connect ESP32 **GPIO17 → TXD**, **GPIO16 → RXD**, **3V3 → VCC**, **GND → GND** on the converter. Some modules label the same pins **DI**/**RO** instead of **TXD**/**RXD**.
