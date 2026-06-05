@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 #include "opendtu_sdm630.h"
 
 #include "esphome/core/application.h"
