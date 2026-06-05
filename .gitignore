@@ -1,0 +1,10 @@
+/.esphome/
+/secrets.yaml
+
+/.vscode/
+/.cursor/
+
+__pycache__/
+/legacy/
+
+local.*
