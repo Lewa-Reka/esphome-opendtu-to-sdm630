@@ -27,13 +27,15 @@ ESPHome external component that bridges [OpenDTU](https://github.com/tbnobody/Op
 
 This component was built to feed Hoymiles microinverter production data into a **Deye 3-phase hybrid inverter** running in **AC Couple** mode with microinverters on load side.
 
-In AC Couple on Load Side mode, Deye needs an **Eastron SDM630** meter on its Meter-485 Modbus port to report **PV production** correctly and to measure **household energy consumption** accurately.
+In AC Couple on Load Side mode, Deye needs an **Eastron SDM630** energy meter to report **PV production** correctly and to measure **household energy consumption** accurately. In a typical installation that meter is wired on the **AC line where the microinverter system connects to the grid** (the coupled PV feed-in point), and its readings are passed to the inverter over the **Meter-485** Modbus port.
 
-Instead of installing a physical SDM630 at address `0x02`, this bridge:
+Instead of mounting that physical SDM630 on the AC cabling, this bridge:
 
-- Reads live production data from **OpenDTU** over **WebSocket** (`/livedata`) as often as OpenDTU publishes it (up to once per second, depending on the OpenDTU poll interval)
+- Uses **OpenDTU** for **wireless** communication with Hoymiles microinverters - no RS485 or extra meter wiring across the site
+- Aggregates production from **many microinverters**, even when they are far apart and tied into the grid at **different feed-in points**, as long as OpenDTU can reach them
+- Reads live data from OpenDTU over **WebSocket** (`/livedata`) as often as OpenDTU publishes it (up to once per second, depending on the OpenDTU poll interval)
 - Maps each microinverter to the correct grid phase (L1/L2/L3)
-- Exposes the result as an **SDM630 Modbus slave** for the Deye inverter
+- Exposes the result as an **SDM630 Modbus slave** on the Deye Meter-485 port
 
 That gives Deye accurate PV production accounting without affecting OpenDTU operation - OpenDTU continues to poll and manage all microinverters as before, while this bridge only subscribes to the livedata stream. The WebSocket path is efficient and fast enough for correct energy totals and to avoid negative household consumption readings in AC couple on load side setup.
 
@@ -54,7 +56,7 @@ flowchart TB
     mi_l3b["MI HMS roof"]
   end
   odtu["OpenDTU ESP32"]
-  bridge["opendtu sdm630 ESP32"]
+  bridge["OpenDTU to SDM630 ESP32"]
   deye["Deye hybrid inverter"]
   mi_l1 -->|RF| odtu
   mi_l2 -->|RF| odtu
