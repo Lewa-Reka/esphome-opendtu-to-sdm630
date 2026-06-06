@@ -61,24 +61,38 @@ For AC Couple on Load Side with **Grid Tie Meter 2** enabled, Deye always polls 
 ## How it works
 
 ```mermaid
-flowchart LR
-  subgraph feed_a [Grid_feed_in_A]
-    mi1[HMS_garage]
+flowchart TB
+  subgraph property ["Property - separate grid feed-in points"]
+    direction LR
+    subgraph feed_l1 ["Grid feed-in L1"]
+      mi_l1["HMS shed"]
+    end
+    subgraph feed_l2 ["Grid feed-in L2"]
+      direction TB
+      mi_l2_1["HMS 1"]
+      mi_l2_2["HMS 2"]
+      mi_l2_3["HMS 3"]
+      mi_l2_4["HMS 4"]
+    end
+    subgraph feed_l3a ["Grid feed-in L3"]
+      mi_l3a["HMS garage"]
+    end
+    subgraph feed_l3b ["Grid feed-in L3"]
+      mi_l3b["HMS roof"]
+    end
   end
-  subgraph feed_b [Grid_feed_in_B]
-    mi2[HMS_roof]
-  end
-  subgraph feed_c [Grid_feed_in_C]
-    mi3[HMS_shed]
-  end
-  odtu[OpenDTU_ESP32]
-  bridge[opendtu_sdm630_ESP32]
-  deye[Deye_hybrid_inverter]
-  mi1 -->|RF| odtu
-  mi2 -->|RF| odtu
-  mi3 -->|RF| odtu
-  odtu -->|"WebSocket /livedata"| bridge
-  bridge -->|"Modbus RTU single SDM630"| deye
+  odtu["OpenDTU ESP32"]
+  bridge["opendtu sdm630 ESP32"]
+  deye["Deye hybrid inverter"]
+  mi_l1 -->|RF| odtu
+  mi_l2_1 -->|RF| odtu
+  mi_l2_2 -->|RF| odtu
+  mi_l2_3 -->|RF| odtu
+  mi_l2_4 -->|RF| odtu
+  mi_l3a -->|RF| odtu
+  mi_l3b -->|RF| odtu
+  odtu -->|WebSocket livedata| bridge
+  bridge -->|Modbus RTU SDM630| deye
 ```
 
 Each microinverter only needs radio reach to **OpenDTU** - not a cable run to the inverter or a shared RS485 bus. The bridge merges per-phase values from every mapped inverter before Deye reads one emulated meter.
@@ -92,30 +106,30 @@ Each microinverter only needs radio reach to **OpenDTU** - not a cable run to th
 
 ```mermaid
 flowchart LR
-  subgraph esp32 [ESP32_DevKit_V1]
-    TX[GPIO17_TX]
-    RX[GPIO16_RX]
-    VCC[3V3]
-    GNDesp[GND]
+  subgraph esp32 ["ESP32 DevKit V1"]
+    TX["GPIO17 TX"]
+    RX["GPIO16 RX"]
+    VCC["3V3"]
+    GNDesp["GND"]
   end
-  subgraph conv [RS485_to_TTL_auto_direction]
-    TXD[TXD]
-    RXD[RXD]
-    VCCc[VCC]
-    GNDc[GND]
-    Aterm[A]
-    Bterm[B]
+  subgraph conv ["RS485 to TTL auto-direction"]
+    TXD["TXD"]
+    RXD["RXD"]
+    VCCc["VCC"]
+    GNDc["GND"]
+    Aterm["A"]
+    Bterm["B"]
   end
-  subgraph inv [Deye_Modbus_port]
-    RS485Pin2[Meter_485_Pin_2]
-    RS485Pin1[Meter_485_Pin_1]
+  subgraph inv ["Deye Meter-485 RJ45"]
+    RS485Pin2["Pin 2 orange - METER-485-A"]
+    RS485Pin1["Pin 1 white-orange - METER-485-B"]
   end
   TX --> TXD
   RX --> RXD
   VCC --> VCCc
   GNDesp --> GNDc
-  Aterm -->|"twisted pair orange"| RS485Pin2
-  Bterm -->|"twisted pair white_orange"| RS485Pin1
+  Aterm -->|orange wire| RS485Pin2
+  Bterm -->|white-orange wire| RS485Pin1
 ```
 
 Connect the inverter with a standard twisted pair. From the RS485 converter, use only **A** (orange) and **B** (white-orange) to the inverter Modbus terminals. Connect ESP32 **GPIO17 → TXD**, **GPIO16 → RXD**, **3V3 → VCC**, **GND → GND** on the converter. Some modules label the same pins **DI**/**RO** instead of **TXD**/**RXD**.
