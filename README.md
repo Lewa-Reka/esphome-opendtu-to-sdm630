@@ -25,9 +25,20 @@ The component was designed for this use case, but it may also work with other eq
 
 ### Multiple microinverters, one meter
 
-A physical **Eastron SDM630** can only be wired to **one** point on your installation. That becomes a real limitation when you run **several microinverters** spread across the property — for example on a garage and a main building - each fed from a **different grid connection point**. You cannot place one meter at every feed-in location and still present a single Eastron device to the Deye inverter.
+A physical **Eastron SDM630** can only be wired to **one** point on your installation. That becomes a real limitation when you run **several microinverters** spread across the property - for example on a garage and a main building - each fed from a **different grid connection point**. You cannot place one meter at every feed-in location and still present a single Eastron device to the Deye inverter.
 
 **OpenDTU** already collects production from every microinverter it can reach over the air. This bridge reads all of them from OpenDTU livedata, maps each inverter to the correct grid phase, and **aggregates** the values into one SDM630 register set for the inverter. As long as a microinverter appears in OpenDTU, you can include it in `microinverter_map` and pass its data to Deye in AC Couple on Load Side mode - without extra meters or RS485 wiring across the site.
+
+## Requirements
+
+> **Current scope:** Only **single-phase Hoymiles** microinverters managed by OpenDTU are supported at this time.
+
+- [OpenDTU](https://github.com/tbnobody/OpenDTU) running and reachable on your network (WebSocket `/livedata`, dashboard password), with **single-phase Hoymiles** microinverters
+- A **second ESP32** for this bridge (separate from the OpenDTU ESP32 in the tested setup)
+- RS485-to-TTL converter (no DE/RE pin required in the tested setup)
+- ESPHome **≥ 2025.6.0**
+- Reader device configured for **Eastron SDM630** over Modbus RTU (**9600 8N1**)
+- **Home Assistant is not required** - ESPHome alone is enough to build, flash, and run this component
 
 ## Tested setup
 
@@ -46,17 +57,6 @@ Deye uses **fixed Modbus slave addresses** - they are not configurable in the in
 | `0x02` | Grid Tie Meter 2 (AC Couple PV production correction) |
 
 For AC Couple on Load Side with **Grid Tie Meter 2** enabled, Deye always polls **`0x02`** for microinverter production data. The emulated meter must answer on that address; you cannot pick another slave ID and expect Deye to follow. Deye may also scan **`0x01`** for the primary meter.
-
-## Requirements
-
-> **Current scope:** Only **single-phase Hoymiles** microinverters managed by OpenDTU are supported at this time.
-
-- [OpenDTU](https://github.com/tbnobody/OpenDTU) running and reachable on your network (WebSocket `/livedata`, dashboard password), with **single-phase Hoymiles** microinverters
-- A **second ESP32** for this bridge (separate from the OpenDTU ESP32 in the tested setup)
-- RS485-to-TTL converter (no DE/RE pin required in the tested setup)
-- ESPHome **≥ 2025.6.0**
-- Reader device configured for **Eastron SDM630** over Modbus RTU (**9600 8N1**)
-- **Home Assistant is not required** - ESPHome alone is enough to build, flash, and run this component
 
 ## How it works
 
@@ -81,7 +81,7 @@ flowchart LR
   bridge -->|"Modbus RTU single SDM630"| deye
 ```
 
-Each microinverter only needs radio reach to **OpenDTU** — not a cable run to the inverter or a shared RS485 bus. The bridge merges per-phase values from every mapped inverter before Deye reads one emulated meter.
+Each microinverter only needs radio reach to **OpenDTU** - not a cable run to the inverter or a shared RS485 bus. The bridge merges per-phase values from every mapped inverter before Deye reads one emulated meter.
 
 - Parses OpenDTU livedata JSON (`inverters[].AC["0"]` → voltage, current, power, frequency)
 - Maps microinverters to grid phases via `microinverter_map` (several inverters can share a phase; current and power are summed)
