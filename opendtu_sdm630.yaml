@@ -1,6 +1,3 @@
-substitutions:
-  device_name: opendtu-sdm630
-
 external_components:
   - source: github://Lewa-Reka/esphome-opendtu-to-sdm630@main
     components: [opendtu_sdm630]
@@ -16,17 +13,6 @@ opendtu_sdm630:
       grid_phase: 3
     - serial: "123456789012"
       grid_phase: 2
-
-esphome:
-  name: ${device_name}
-  friendly_name: OpenDTU to SDM630
-  min_version: "2025.6.0"
-  name_add_mac_suffix: true
-
-esp32:
-  variant: esp32
-  framework:
-    type: esp-idf
 
 logger:
   level: INFO # VERBOSE / DEBUG / INFO / WARN
@@ -44,19 +30,6 @@ modbus:
   uart_id: modbus_uart
   role: server
   # flow_control_pin: GPIO21 # Uncomment and set appropriate pin if your TTL converter requires it
-
-api:
-
-ota:
-  - platform: esphome
-    password: !secret ota_password
-
-wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
-  ap:
-    ssid: "${device_name}-fallback"
-    password: !secret ota_password
 
 sensor:
   - platform: wifi_signal
@@ -85,3 +58,32 @@ text_sensor:
       id: esp_wifi_ssid
       icon: mdi:access-point
       entity_category: diagnostic
+
+# ESPHome device configuration below - may not be required when using the Home Assistant ESPHome add-on.
+
+substitutions:
+  device_name: opendtu-sdm630
+
+esphome:
+  name: ${device_name}
+  friendly_name: OpenDTU to SDM630
+  min_version: "2025.6.0"
+  name_add_mac_suffix: true
+
+esp32:
+  variant: esp32
+  framework:
+    type: esp-idf
+
+api:
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${device_name}-fallback"
+    password: !secret ota_password
