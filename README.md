@@ -29,7 +29,7 @@ ESPHome external component that reads Hoymiles microinverters data from [OpenDTU
 
 This component was built for **Deye 3-phase hybrid inverters** in **AC Couple on Load Side** mode - when additional Hoymiles microinverters inject PV on the load side, separate from the inverter's own MPPT strings.
 
-In that mode Deye needs an **Eastron SDM630** at the **AC Couple coupling point** to measure how much power the microinverters inject into the installation. The inverter uses those per-phase values to separate **AC-coupled PV generation** from **grid import/export** and to calculate **household load** correctly. A physical meter is installed on the **AC conductors where the microinverter system ties into the grid**, with readings delivered over the **Meter-485** Modbus port.
+In that mode Deye needs an **Eastron SDM630** to measure how much power the microinverters inject into the installation. The inverter uses those per-phase values to separate **AC-coupled PV generation** from **grid import/export** and to calculate **household load** correctly. A physical meter is installed on the **AC conductors where the microinverter system ties into the grid**, with readings delivered over the **Meter-485** Modbus port.
 
 Instead of mounting that physical SDM630 on the AC cabling, this bridge:
 
