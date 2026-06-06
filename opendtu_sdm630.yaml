@@ -14,9 +14,6 @@ opendtu_sdm630:
     - serial: "123456789012"
       grid_phase: 2
 
-logger:
-  level: INFO # VERBOSE / DEBUG / INFO / WARN
-
 uart:
   id: modbus_uart
   tx_pin: 17
@@ -59,7 +56,9 @@ text_sensor:
       icon: mdi:access-point
       entity_category: diagnostic
 
-# ESPHome device configuration below - may not be required when using the Home Assistant ESPHome add-on.
+# ------------------------------------------------------------
+# may not be required when using the Home Assistant ESPHome add-on.
+# ------------------------------------------------------------
 
 substitutions:
   device_name: opendtu-sdm630
@@ -74,6 +73,9 @@ esp32:
   variant: esp32
   framework:
     type: esp-idf
+
+logger:
+  level: INFO # VERBOSE / DEBUG / INFO / WARN
 
 api:
 
