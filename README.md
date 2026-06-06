@@ -35,11 +35,41 @@ Instead of installing a physical SDM630 at address `0x02`, this bridge:
 - Maps each microinverter to the correct grid phase (L1/L2/L3)
 - Exposes the result as an **SDM630 Modbus slave** for the Deye inverter
 
-That gives Deye accurate PV production accounting without affecting OpenDTU operation - OpenDTU continues to poll and manage all microinverters as before, while this bridge only subscribes to the livedata stream.
-
-The WebSocket path is efficient and fast enough for correct energy totals and to avoid negative household consumption readings in AC couple on load side setup.
+That gives Deye accurate PV production accounting without affecting OpenDTU operation - OpenDTU continues to poll and manage all microinverters as before, while this bridge only subscribes to the livedata stream. The WebSocket path is efficient and fast enough for correct energy totals and to avoid negative household consumption readings in AC couple on load side setup.
 
 The component was designed for this use case, but it may also work with other equipment that reads an Eastron SDM630 over Modbus RTU.
+
+## How it works
+
+```mermaid
+flowchart TB
+  subgraph feed_l1 ["Grid feed-in L1"]
+    mi_l1["MI HMS shed"]
+  end
+  subgraph feed_l2 ["Grid feed-in L2"]
+    mi_l2["MI HMS fence"]
+  end
+  subgraph feed_l3 ["Grid feed-in L3"]
+    mi_l3a["MI HMS garage"]
+    mi_l3b["MI HMS roof"]
+  end
+  odtu["OpenDTU ESP32"]
+  bridge["opendtu sdm630 ESP32"]
+  deye["Deye hybrid inverter"]
+  mi_l1 -->|RF| odtu
+  mi_l2 -->|RF| odtu
+  mi_l3a -->|RF| odtu
+  mi_l3b -->|RF| odtu
+  odtu -->|WebSocket livedata| bridge
+  bridge -->|Modbus RTU SDM630| deye
+```
+
+Each microinverter (**MI**) only needs radio reach to **OpenDTU** - not a cable run to the inverter or a shared RS485 bus. The bridge merges per-phase values from every mapped inverter before Deye reads one emulated meter.
+
+- Parses OpenDTU livedata JSON (`inverters[].AC["0"]` → voltage, current, power, frequency)
+- Maps microinverters to grid phases via `microinverter_map` (several inverters can share a phase; current and power are summed)
+- Inverts current and power sign (OpenDTU reports positive production; SDM630 export is negative)
+- Serves the full SDM630 input register buffer on `slave_address` (`0x02` for Deye Grid Tie Meter 2); silently ignores Deye queries to `0x01` (main meter address)
 
 ### Multiple microinverters, one meter
 
@@ -75,38 +105,6 @@ Deye uses **fixed Modbus slave addresses** - they are not configurable in the in
 | `0x02` | Grid Tie Meter 2 (AC Couple PV production correction) |
 
 For AC Couple on Load Side with **Grid Tie Meter 2** enabled, Deye always polls **`0x02`** for microinverter production data. The emulated meter must answer on that address; you cannot pick another slave ID and expect Deye to follow. Deye may also scan **`0x01`** for the primary meter.
-
-## How it works
-
-```mermaid
-flowchart TB
-  subgraph feed_l1 ["Grid feed-in L1"]
-    mi_l1["MI HMS shed"]
-  end
-  subgraph feed_l2 ["Grid feed-in L2"]
-    mi_l2["MI HMS fence"]
-  end
-  subgraph feed_l3 ["Grid feed-in L3"]
-    mi_l3a["MI HMS garage"]
-    mi_l3b["MI HMS roof"]
-  end
-  odtu["OpenDTU ESP32"]
-  bridge["opendtu sdm630 ESP32"]
-  deye["Deye hybrid inverter"]
-  mi_l1 -->|RF| odtu
-  mi_l2 -->|RF| odtu
-  mi_l3a -->|RF| odtu
-  mi_l3b -->|RF| odtu
-  odtu -->|WebSocket livedata| bridge
-  bridge -->|Modbus RTU SDM630| deye
-```
-
-Each microinverter (**MI**) only needs radio reach to **OpenDTU** - not a cable run to the inverter or a shared RS485 bus. The bridge merges per-phase values from every mapped inverter before Deye reads one emulated meter.
-
-- Parses OpenDTU livedata JSON (`inverters[].AC["0"]` → voltage, current, power, frequency)
-- Maps microinverters to grid phases via `microinverter_map` (several inverters can share a phase; current and power are summed)
-- Inverts current and power sign (OpenDTU reports positive production; SDM630 export is negative)
-- Serves the full SDM630 input register buffer on `slave_address` (`0x02` for Deye Grid Tie Meter 2); silently ignores Deye queries to `0x01` (main meter address)
 
 ## Wiring
 
