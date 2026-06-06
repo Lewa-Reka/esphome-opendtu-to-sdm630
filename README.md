@@ -3,7 +3,7 @@
 <!--
 SPDX-License-Identifier: Apache-2.0
 
-Licensed under the Apache License, Version 2.0 (the "License");
+Licensed under the Apache License, Version 2.0 (the "License"),
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
@@ -32,7 +32,7 @@ In AC Couple on Load Side mode, Deye needs an **Eastron SDM630** energy meter to
 Instead of mounting that physical SDM630 on the AC cabling, this bridge:
 
 - Uses **OpenDTU** for **wireless** communication with Hoymiles microinverters - no RS485 or extra meter wiring across the site
-- Aggregates production from **many microinverters**, even when they are far apart and tied into the grid at **different feed-in points**, as long as OpenDTU can reach them
+- Aggregates production from **many microinverters** at **different grid feed-in points** into one emulated SDM630 - Deye accepts only **one** Eastron meter on Meter-485, so multiple physical meters cannot cover several distant coupling points. OpenDTU plus this bridge can
 - Reads live data from OpenDTU over **WebSocket** (`/livedata`) as often as OpenDTU publishes it (up to once per second, depending on the OpenDTU poll interval)
 - Maps each microinverter to the correct grid phase (L1/L2/L3)
 - Exposes the result as an **SDM630 Modbus slave** on the Deye Meter-485 port
@@ -69,15 +69,9 @@ flowchart TB
 Each microinverter (**MI**) only needs radio reach to **OpenDTU** - not a cable run to the inverter or a shared RS485 bus. The bridge merges per-phase values from every mapped inverter before Deye reads one emulated meter.
 
 - Parses OpenDTU livedata JSON (`inverters[].AC["0"]` → voltage, current, power, frequency)
-- Maps microinverters to grid phases via `microinverter_map` (several inverters can share a phase; current and power are summed)
-- Inverts current and power sign (OpenDTU reports positive production; SDM630 export is negative)
-- Serves the full SDM630 input register buffer on `slave_address` (`0x02` for Deye Grid Tie Meter 2); silently ignores Deye queries to `0x01` (main meter address)
-
-### Multiple microinverters, one meter
-
-A physical **Eastron SDM630** can only be wired to **one** point on your installation. That becomes a real limitation when you run **several microinverters** spread across the property - for example on a garage and a main building - each fed from a **different grid connection point**. You cannot place one meter at every feed-in location and still present a single Eastron device to the Deye inverter.
-
-**OpenDTU** already collects production from every microinverter it can reach over the air. This bridge reads all of them from OpenDTU livedata, maps each inverter to the correct grid phase, and **aggregates** the values into one SDM630 register set for the inverter. As long as a microinverter appears in OpenDTU, you can include it in `microinverter_map` and pass its data to Deye in AC Couple on Load Side mode - without extra meters or RS485 wiring across the site.
+- Maps microinverters to grid phases via `microinverter_map` (several inverters can share a phase, current and power are summed)
+- Inverts current and power sign (OpenDTU reports positive production, SDM630 export is negative)
+- Serves the full SDM630 input register buffer on `slave_address` (`0x02` for Deye Grid Tie Meter 2), silently ignores Deye queries to `0x01` (main meter address)
 
 ## Requirements
 
@@ -96,8 +90,8 @@ A physical **Eastron SDM630** can only be wired to **one** point on your install
 |-------|---------|
 | OpenDTU | [tbnobody/OpenDTU](https://github.com/tbnobody/OpenDTU) **v26.3.30**, Poll Interval **1 s** (DTU Settings), on **ESP32 DevKit V1** |
 | Microinverters | Hoymiles **HMS-2000-4T** and **HMS-1600-4T**, each on a separate grid phase (3-phase supply) |
-| Deye inverter | **SUN-12K-SG04LP3-EU**, firmware **1172**; Grid Tie Meter 2 enabled, energy meter type **Eastron** (Advanced Settings); polls Grid Tie Meter 2 at fixed address **`0x02`** |
-| This bridge | **ESP32 DevKit V1**, **RS485-to-TTL auto-direction** converter; `slave_address: 0x02` to match Deye Grid Tie Meter 2 |
+| Deye inverter | **SUN-12K-SG04LP3-EU**, firmware **1172**, Grid Tie Meter 2 enabled, energy meter type **Eastron** (Advanced Settings), polls Grid Tie Meter 2 at fixed address **`0x02`** |
+| This bridge | **ESP32 DevKit V1**, **RS485-to-TTL auto-direction** converter, `slave_address: 0x02` to match Deye Grid Tie Meter 2 |
 
 Deye uses **fixed Modbus slave addresses** - they are not configurable in the inverter menu:
 
@@ -106,7 +100,7 @@ Deye uses **fixed Modbus slave addresses** - they are not configurable in the in
 | `0x01` | Main / grid energy meter |
 | `0x02` | Grid Tie Meter 2 (AC Couple PV production correction) |
 
-For AC Couple on Load Side with **Grid Tie Meter 2** enabled, Deye always polls **`0x02`** for microinverter production data. The emulated meter must answer on that address; you cannot pick another slave ID and expect Deye to follow. Deye may also scan **`0x01`** for the primary meter.
+For AC Couple on Load Side with **Grid Tie Meter 2** enabled, Deye always polls **`0x02`** for microinverter production data. The emulated meter must answer on that address, you cannot pick another slave ID and expect Deye to follow. Deye may also scan **`0x01`** for the primary meter.
 
 ## Wiring
 
@@ -165,12 +159,12 @@ All options under `opendtu_sdm630:`:
 
 Each entry requires `grid_phase` (`1` = L1, `2` = L2, `3` = L3) and **exactly one** identifier:
 
-- `serial` - microinverter serial from OpenDTU livedata (`inverters[].serial`); stable if you rename the inverter in OpenDTU
+- `serial` - microinverter serial from OpenDTU livedata (`inverters[].serial`), stable if you rename the inverter in OpenDTU
 - `name` - microinverter name from OpenDTU livedata (`inverters[].name`)
 
 `serial` and `name` cannot be used in the same entry.
 
-`grid_phase` is the **grid phase on the SDM630 meter**, not the number of AC outputs on the microinverter. Multiple microinverters on the same phase: **current and power are summed**, **voltage is averaged**. Grid frequency is averaged across all mapped microinverters; if unavailable, `default_frequency` is used.
+`grid_phase` is the **grid phase on the SDM630 meter**, not the number of AC outputs on the microinverter. Multiple microinverters on the same phase: **current and power are summed**, **voltage is averaged**. Grid frequency is averaged across all mapped microinverters, if unavailable, `default_frequency` is used.
 
 Example:
 
@@ -307,7 +301,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 ```
 Copyright 2026 Lewa-Reka <lewareka.yt@gmail.com>
 
-Licensed under the Apache License, Version 2.0 (the "License");
+Licensed under the Apache License, Version 2.0 (the "License"),
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
