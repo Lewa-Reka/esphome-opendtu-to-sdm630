@@ -9,7 +9,9 @@ ESPHome external component that bridges [OpenDTU](https://github.com/tbnobody/Op
 
 This component was built to feed Hoymiles microinverter production data into a **Deye 3-phase hybrid inverter** running in **AC Couple** mode with microinverters on load side.
 
-In AC Couple on Load Side mode, Deye needs an **Eastron SDM630** meter on its Modbus port (Grid Tie Meter 2, meter type Eastron in advanced settings) to report **PV production** correctly and to measure **household energy consumption** accurately. Instead of installing that physical meter, this bridge:
+In AC Couple on Load Side mode, Deye needs an **Eastron SDM630** meter on its Meter-485 Modbus port to report **PV production** correctly and to measure **household energy consumption** accurately.
+
+Instead of installing a physical SDM630 at address `0x02`, this bridge:
 
 - Reads live production data from **OpenDTU** over **WebSocket** (`/livedata`) as often as OpenDTU publishes it (up to once per second, depending on the OpenDTU poll interval)
 - Maps each microinverter to the correct grid phase (L1/L2/L3)
@@ -21,14 +23,29 @@ The WebSocket path is efficient and fast enough for correct energy totals and to
 
 The component was designed for this use case, but it may also work with other equipment that reads an Eastron SDM630 over Modbus RTU.
 
+### Multiple microinverters, one meter
+
+A physical **Eastron SDM630** can only be wired to **one** point on your installation. That becomes a real limitation when you run **several microinverters** spread across the property — for example on a garage and a main building - each fed from a **different grid connection point**. You cannot place one meter at every feed-in location and still present a single Eastron device to the Deye inverter.
+
+**OpenDTU** already collects production from every microinverter it can reach over the air. This bridge reads all of them from OpenDTU livedata, maps each inverter to the correct grid phase, and **aggregates** the values into one SDM630 register set for the inverter. As long as a microinverter appears in OpenDTU, you can include it in `microinverter_map` and pass its data to Deye in AC Couple on Load Side mode - without extra meters or RS485 wiring across the site.
+
 ## Tested setup
 
 | Layer | Details |
 |-------|---------|
 | OpenDTU | [tbnobody/OpenDTU](https://github.com/tbnobody/OpenDTU) **v26.3.30**, Poll Interval **1 s** (DTU Settings), on **ESP32 DevKit V1** |
 | Microinverters | Hoymiles **HMS-2000-4T** and **HMS-1600-4T**, each on a separate grid phase (3-phase supply) |
-| Deye inverter | **SUN-12K-SG04LP3-EU**, firmware **1172**, Grid Tie Meter 2 enabled, energy meter type **Eastron** (advanced settings) |
-| This bridge | **ESP32 DevKit V1**, **RS485-to-TTL converter without direction control** (auto-direction module) |
+| Deye inverter | **SUN-12K-SG04LP3-EU**, firmware **1172**; Grid Tie Meter 2 enabled, energy meter type **Eastron** (Advanced Settings); polls Grid Tie Meter 2 at fixed address **`0x02`** |
+| This bridge | **ESP32 DevKit V1**, **RS485-to-TTL auto-direction** converter; `slave_address: 0x02` to match Deye Grid Tie Meter 2 |
+
+Deye uses **fixed Modbus slave addresses** - they are not configurable in the inverter menu:
+
+| Address | Role |
+|---------|-----------|
+| `0x01` | Main / grid energy meter |
+| `0x02` | Grid Tie Meter 2 (AC Couple PV production correction) |
+
+For AC Couple on Load Side with **Grid Tie Meter 2** enabled, Deye always polls **`0x02`** for microinverter production data. The emulated meter must answer on that address; you cannot pick another slave ID and expect Deye to follow. Deye may also scan **`0x01`** for the primary meter.
 
 ## Requirements
 
@@ -45,15 +62,31 @@ The component was designed for this use case, but it may also work with other eq
 
 ```mermaid
 flowchart LR
-  mi[Hoymiles_microinverters] -->|RF| odtu[OpenDTU_ESP32]
-  odtu -->|"WebSocket /livedata up to 1s"| bridge[opendtu_sdm630_ESP32]
-  bridge -->|"Modbus RTU SDM630 emulator"| deye[Deye_hybrid_inverter]
+  subgraph feed_a [Grid_feed_in_A]
+    mi1[HMS_garage]
+  end
+  subgraph feed_b [Grid_feed_in_B]
+    mi2[HMS_roof]
+  end
+  subgraph feed_c [Grid_feed_in_C]
+    mi3[HMS_shed]
+  end
+  odtu[OpenDTU_ESP32]
+  bridge[opendtu_sdm630_ESP32]
+  deye[Deye_hybrid_inverter]
+  mi1 -->|RF| odtu
+  mi2 -->|RF| odtu
+  mi3 -->|RF| odtu
+  odtu -->|"WebSocket /livedata"| bridge
+  bridge -->|"Modbus RTU single SDM630"| deye
 ```
 
+Each microinverter only needs radio reach to **OpenDTU** — not a cable run to the inverter or a shared RS485 bus. The bridge merges per-phase values from every mapped inverter before Deye reads one emulated meter.
+
 - Parses OpenDTU livedata JSON (`inverters[].AC["0"]` → voltage, current, power, frequency)
-- Maps microinverters to grid phases via `microinverter_map`
+- Maps microinverters to grid phases via `microinverter_map` (several inverters can share a phase; current and power are summed)
 - Inverts current and power sign (OpenDTU reports positive production; SDM630 export is negative)
-- Serves the full SDM630 input register buffer on `slave_address`; silently ignores queries to factory address `0x01`
+- Serves the full SDM630 input register buffer on `slave_address` (`0x02` for Deye Grid Tie Meter 2); silently ignores Deye queries to `0x01` (main meter address)
 
 ## Wiring
 
