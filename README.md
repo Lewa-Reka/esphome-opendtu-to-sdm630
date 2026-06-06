@@ -21,25 +21,25 @@ limitations under the License.
 ![GitHub License](https://img.shields.io/github/license/Lewa-Reka/esphome-opendtu-to-sdm630?style=for-the-badge)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/y/Lewa-Reka/esphome-opendtu-to-sdm630?style=for-the-badge)
 
-ESPHome external component that bridges [OpenDTU](https://github.com/tbnobody/OpenDTU) microinverter data to a Modbus RTU **Eastron SDM630** energy meter emulator.
+ESPHome external component that reads Hoymiles microinverters data from [OpenDTU](https://github.com/tbnobody/OpenDTU) and presents it to a hybrid inverter as a Modbus RTU **Eastron SDM630** energy meter.
+
+> **Note:** It was developed and tested with Deye, but any **Modbus master** expecting an **Eastron SDM630** (another hybrid inverter, EMS, or data logger) may work if it uses the same register map.
 
 ## Why this project exists
 
-This component was built to feed Hoymiles microinverter production data into a **Deye 3-phase hybrid inverter** running in **AC Couple** mode with microinverters on load side.
+This component was built for **Deye 3-phase hybrid inverters** in **AC Couple on Load Side** mode - when additional Hoymiles microinverters inject PV on the load side, separate from the inverter's own MPPT strings.
 
-In AC Couple on Load Side mode, Deye needs an **Eastron SDM630** energy meter to report **PV production** correctly and to measure **household energy consumption** accurately. In a typical installation that meter is wired on the **AC line where the microinverter system connects to the grid** (the coupled PV feed-in point), and its readings are passed to the inverter over the **Meter-485** Modbus port.
+In that mode Deye needs an **Eastron SDM630** at the **AC Couple coupling point** to measure how much power the microinverters inject into the installation. The inverter uses those per-phase values to separate **AC-coupled PV generation** from **grid import/export** and to calculate **household load** correctly. A physical meter is installed on the **AC conductors where the microinverter system ties into the grid**, with readings delivered over the **Meter-485** Modbus port.
 
 Instead of mounting that physical SDM630 on the AC cabling, this bridge:
 
 - Uses **OpenDTU** for **wireless** communication with Hoymiles microinverters - no RS485 or extra meter wiring across the site
-- Aggregates production from **many microinverters** at **different grid feed-in points** into one emulated SDM630 - Deye accepts only **one** Eastron meter on Meter-485, so multiple physical meters cannot cover several distant coupling points. OpenDTU plus this bridge can
+- Aggregates **AC-coupled PV** from **many microinverters** at **different coupling points** into one emulated SDM630 - Deye exposes only **one** Eastron meter interface on Meter-485, so you cannot wire a separate meter at each distant feed-in. OpenDTU radio reach plus this bridge can still combine them
 - Reads live data from OpenDTU over **WebSocket** (`/livedata`) as often as OpenDTU publishes it (up to once per second, depending on the OpenDTU poll interval)
 - Maps each microinverter to the correct grid phase (L1/L2/L3)
 - Exposes the result as an **SDM630 Modbus slave** on the Deye Meter-485 port
 
-That gives Deye accurate PV production accounting without affecting OpenDTU operation - OpenDTU continues to poll and manage all microinverters as before, while this bridge only subscribes to the livedata stream. The WebSocket path is efficient and fast enough for correct energy totals and to avoid negative household consumption readings in AC couple on load side setup.
-
-The component was designed for this use case, but it may also work with other equipment that reads an Eastron SDM630 over Modbus RTU.
+That lets Deye **meter AC-coupled PV generation** and **calculate household load** correctly - without affecting OpenDTU operation. OpenDTU continues to poll and manage all microinverters as before, this bridge only subscribes to the livedata stream. Frequent livedata updates (up to once per second) keep instantaneous power and energy counters aligned with the microinverters. Without correct coupled-PV metering, household load can read as **negative** or **no consumption at all** while microinverters are producing - on some Deye firmware/settings negative values are simply clamped to zero rather than displayed.
 
 ## How it works
 
@@ -66,11 +66,11 @@ flowchart TB
   bridge -->|Modbus RTU SDM630| deye
 ```
 
-Each microinverter (**MI**) only needs radio reach to **OpenDTU** - not a cable run to the inverter or a shared RS485 bus. The bridge merges per-phase values from every mapped inverter before Deye reads one emulated meter.
+Each microinverter (**MI**) only needs radio reach to **OpenDTU**. The bridge sums per-phase active power and current from every mapped inverter into the single SDM630 register image that an inverter polls.
 
 - Parses OpenDTU livedata JSON (`inverters[].AC["0"]` → voltage, current, power, frequency)
 - Maps microinverters to grid phases via `microinverter_map` (several inverters can share a phase, current and power are summed)
-- Inverts current and power sign (OpenDTU reports positive production, SDM630 export is negative)
+- Inverts current and power sign (OpenDTU reports positive generation, the SDM630 presents export as negative values)
 - Serves the full SDM630 input register buffer on `slave_address` (`0x02` for Deye Grid Tie Meter 2), silently ignores Deye queries to `0x01` (main meter address)
 
 ## Requirements
@@ -81,7 +81,7 @@ Each microinverter (**MI**) only needs radio reach to **OpenDTU** - not a cable 
 - A **second ESP32** for this bridge (separate from the OpenDTU ESP32 in the tested setup)
 - RS485-to-TTL converter (no DE/RE pin required in the tested setup)
 - ESPHome **≥ 2025.6.0**
-- Reader device configured for **Eastron SDM630** over Modbus RTU (**9600 8N1**)
+- **Modbus master** (e.g. Deye hybrid inverter with Grid Tie Meter 2 / Eastron type) reading **Eastron SDM630** over Modbus RTU (**9600 8N1**)
 - **Home Assistant is not required** - ESPHome alone is enough to build, flash, and run this component
 
 ## Tested setup
@@ -98,9 +98,9 @@ Deye uses **fixed Modbus slave addresses** - they are not configurable in the in
 | Address | Role |
 |---------|-----------|
 | `0x01` | Main / grid energy meter |
-| `0x02` | Grid Tie Meter 2 (AC Couple PV production correction) |
+| `0x02` | Grid Tie Meter 2 (AC-coupled PV measurement) |
 
-For AC Couple on Load Side with **Grid Tie Meter 2** enabled, Deye always polls **`0x02`** for microinverter production data. The emulated meter must answer on that address, you cannot pick another slave ID and expect Deye to follow. Deye may also scan **`0x01`** for the primary meter.
+For AC Couple on Load Side with **Grid Tie Meter 2** enabled, Deye polls **`0x02`** for per-phase power and energy from the coupled microinverter system. The emulated meter must answer on that address - Deye does not allow choosing a different slave ID. Deye may also scan **`0x01`** for the main grid-side meter.
 
 ## Wiring
 
@@ -164,7 +164,7 @@ Each entry requires `grid_phase` (`1` = L1, `2` = L2, `3` = L3) and **exactly on
 
 `serial` and `name` cannot be used in the same entry.
 
-`grid_phase` is the **grid phase on the SDM630 meter**, not the number of AC outputs on the microinverter. Multiple microinverters on the same phase: **current and power are summed**, **voltage is averaged**. Grid frequency is averaged across all mapped microinverters, if unavailable, `default_frequency` is used.
+`grid_phase` is the **installation phase (L1/L2/L3)** where that microinverter's AC output contributes to coupled PV. Multiple microinverters on the same phase: **active current and power are summed**, **voltage is averaged**. Grid frequency is averaged across mapped microinverters, if unavailable, `default_frequency` is used.
 
 Example:
 
@@ -196,7 +196,7 @@ Individual sensor names and options can be overridden inside the `opendtu_sdm630
 
 ### Failsafe behaviour
 
-When the WebSocket disconnects, JSON parsing fails, or no fresh data arrives within `data_timeout`, **power and current on all phases are set to 0.0**. Voltage falls back to `default_voltage` and frequency to `default_frequency`. Phases without a mapped microinverter always report 0.0 for power and current.
+When the WebSocket disconnects, JSON parsing fails, or no fresh data arrives within `data_timeout`, the bridge reports **zero coupled PV** - active power and current on all phases are set to `0.0`. Voltage falls back to `default_voltage` and frequency to `default_frequency`. Phases without a mapped microinverter always report `0.0` for power and current.
 
 ### Modbus registers
 
