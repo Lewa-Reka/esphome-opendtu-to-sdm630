@@ -147,10 +147,10 @@ All options under `opendtu_sdm630:`:
 
 Each entry requires `grid_phase` (`1` = L1, `2` = L2, `3` = L3) and **exactly one** identifier:
 
-- `name` - microinverter name from OpenDTU livedata (recommended)
-- `index` - position in the `inverters` array from livedata
+- `serial` — microinverter serial from OpenDTU livedata (`inverters[].serial`); stable if you rename the inverter in OpenDTU
+- `name` - microinverter name from OpenDTU livedata (`inverters[].name`)
 
-`name` and `index` cannot be used in the same entry.
+`serial` and `name` cannot be used in the same entry.
 
 `grid_phase` is the **grid phase on the SDM630 meter**, not the number of AC outputs on the microinverter. Multiple microinverters on the same phase: **current and power are summed**, **voltage is averaged**. Grid frequency is averaged across all mapped microinverters; if unavailable, `default_frequency` is used.
 
@@ -163,9 +163,9 @@ opendtu_sdm630:
   modbus_id: modbus_1
   slave_address: 0x02
   microinverter_map:
-    - name: Garage-HMS-2000-4T
+    - name: "Garage-HMS-2000-4T"
       grid_phase: 1
-    - name: Roof-HMS-1600-4T
+    - serial: "123456789012"
       grid_phase: 2
 ```
 

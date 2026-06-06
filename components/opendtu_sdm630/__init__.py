@@ -43,7 +43,7 @@ CONF_DATA_TIMEOUT = "data_timeout"
 CONF_DEFAULT_VOLTAGE = "default_voltage"
 CONF_DEFAULT_FREQUENCY = "default_frequency"
 CONF_MICROINVERTER_MAP = "microinverter_map"
-CONF_MICROINVERTER_INDEX = "index"
+CONF_MICROINVERTER_SERIAL = "serial"
 CONF_MICROINVERTER_NAME = "name"
 CONF_GRID_PHASE = "grid_phase"
 CONF_PUBLISH_SENSORS = "publish_sensors"
@@ -75,12 +75,12 @@ RebootDeviceButton = opendtu_sdm630_ns.class_(
 MICROINVERTER_MAP_SCHEMA = cv.All(
     cv.Schema(
         {
-            cv.Exclusive(CONF_MICROINVERTER_INDEX, "microinverter_id"): cv.int_,
+            cv.Exclusive(CONF_MICROINVERTER_SERIAL, "microinverter_id"): cv.string,
             cv.Exclusive(CONF_MICROINVERTER_NAME, "microinverter_id"): cv.string,
             cv.Required(CONF_GRID_PHASE): cv.int_range(min=1, max=3),
         }
     ),
-    cv.has_at_least_one_key(CONF_MICROINVERTER_INDEX, CONF_MICROINVERTER_NAME),
+    cv.has_at_least_one_key(CONF_MICROINVERTER_SERIAL, CONF_MICROINVERTER_NAME),
 )
 
 VOLTAGE_SENSOR_SCHEMA = sensor.sensor_schema(
@@ -250,10 +250,10 @@ async def to_code(config):
 
     for entry in config[CONF_MICROINVERTER_MAP]:
         grid_phase = entry[CONF_GRID_PHASE]
-        if CONF_MICROINVERTER_INDEX in entry:
+        if CONF_MICROINVERTER_SERIAL in entry:
             cg.add(
-                var.add_microinverter_map_by_index(
-                    entry[CONF_MICROINVERTER_INDEX], grid_phase
+                var.add_microinverter_map_by_serial(
+                    entry[CONF_MICROINVERTER_SERIAL], grid_phase
                 )
             )
         else:

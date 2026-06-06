@@ -12,8 +12,10 @@ opendtu_sdm630:
   modbus_id: modbus_1
   slave_address: 0x02
   microinverter_map:
-    - name: Garage-HMS-2000-4T
+    - name: "Garage-HMS-2000-4T"
       grid_phase: 3
+    - serial: "123456789012"
+      grid_phase: 2
 
 esphome:
   name: ${device_name}

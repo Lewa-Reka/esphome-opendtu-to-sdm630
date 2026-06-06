@@ -43,12 +43,12 @@ struct PhaseAccumulator {
   bool has_data{false};
 };
 
-void OpenDtuSdm630::add_microinverter_map_by_index(int inverter_index, uint8_t grid_phase) {
-  this->microinverter_map_.push_back({inverter_index, "", grid_phase});
+void OpenDtuSdm630::add_microinverter_map_by_serial(const std::string &inverter_serial, uint8_t grid_phase) {
+  this->microinverter_map_.push_back({inverter_serial, "", grid_phase});
 }
 
 void OpenDtuSdm630::add_microinverter_map_by_name(const std::string &inverter_name, uint8_t grid_phase) {
-  this->microinverter_map_.push_back({-1, inverter_name, grid_phase});
+  this->microinverter_map_.push_back({"", inverter_name, grid_phase});
 }
 
 bool OpenDtuSdm630::float_is_finite(float value) { return std::isfinite(value); }
@@ -213,23 +213,21 @@ float OpenDtuSdm630::json_field_v_(const cJSON *ac0, const char *key) {
   return 0.0f;
 }
 
-int OpenDtuSdm630::resolve_microinverter_index_(const cJSON *inverters,
-                                                        const MicroinverterMapEntry &entry) {
-  if (entry.inverter_index >= 0) {
-    return entry.inverter_index;
-  }
-
+int OpenDtuSdm630::find_inverter_index_(const cJSON *inverters, const MicroinverterMapEntry &entry) {
   const int count = cJSON_GetArraySize(inverters);
+  const char *field = !entry.inverter_serial.empty() ? "serial" : "name";
+  const std::string &match = !entry.inverter_serial.empty() ? entry.inverter_serial : entry.inverter_name;
+
   for (int i = 0; i < count; i++) {
     cJSON *inv = cJSON_GetArrayItem(inverters, i);
     if (inv == nullptr) {
       continue;
     }
-    cJSON *name = cJSON_GetObjectItemCaseSensitive(inv, "name");
-    if (!cJSON_IsString(name) || name->valuestring == nullptr) {
+    cJSON *value = cJSON_GetObjectItemCaseSensitive(inv, field);
+    if (!cJSON_IsString(value) || value->valuestring == nullptr) {
       continue;
     }
-    if (entry.inverter_name == name->valuestring) {
+    if (match == value->valuestring) {
       return i;
     }
   }
@@ -262,10 +260,10 @@ void OpenDtuSdm630::process_livedata_(const char *json, size_t len) {
       continue;
     }
 
-    int idx = this->resolve_microinverter_index_(inverters, entry);
+    int idx = this->find_inverter_index_(inverters, entry);
     if (idx < 0) {
-      if (entry.inverter_index >= 0) {
-        ESP_LOGW(TAG, "Microinverter index %d not found in livedata", entry.inverter_index);
+      if (!entry.inverter_serial.empty()) {
+        ESP_LOGW(TAG, "Microinverter serial '%s' not found in livedata", entry.inverter_serial.c_str());
       } else {
         ESP_LOGW(TAG, "Microinverter '%s' not found in livedata", entry.inverter_name.c_str());
       }
@@ -631,8 +629,8 @@ void OpenDtuSdm630::dump_config() {
   ESP_LOGCONFIG(TAG, "  Microinverters : %u mapped", (unsigned) this->microinverter_map_.size());
   for (size_t i = 0; i < this->microinverter_map_.size(); i++) {
     const auto &entry = this->microinverter_map_[i];
-    if (entry.inverter_index >= 0) {
-      ESP_LOGCONFIG(TAG, "    [%u] index=%d -> grid phase L%u", (unsigned) (i + 1), entry.inverter_index,
+    if (!entry.inverter_serial.empty()) {
+      ESP_LOGCONFIG(TAG, "    [%u] serial='%s' -> grid phase L%u", (unsigned) (i + 1), entry.inverter_serial.c_str(),
                     entry.grid_phase);
     } else {
       ESP_LOGCONFIG(TAG, "    [%u] name='%s' -> grid phase L%u", (unsigned) (i + 1), entry.inverter_name.c_str(),

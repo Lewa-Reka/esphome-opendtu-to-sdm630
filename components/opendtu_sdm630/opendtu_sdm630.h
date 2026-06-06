@@ -34,7 +34,7 @@
 namespace esphome::opendtu_sdm630 {
 
 struct MicroinverterMapEntry {
-  int inverter_index{-1};
+  std::string inverter_serial;
   std::string inverter_name;
   uint8_t grid_phase;
 };
@@ -82,7 +82,7 @@ class OpenDtuSdm630 : public Component
   void set_default_frequency(float value) { this->default_frequency_ = value; }
   void set_component_version(const std::string &version) { this->component_version_ = version; }
   void set_modbus_server(modbus::Modbus *parent, uint8_t slave_address);
-  void add_microinverter_map_by_index(int inverter_index, uint8_t grid_phase);
+  void add_microinverter_map_by_serial(const std::string &inverter_serial, uint8_t grid_phase);
   void add_microinverter_map_by_name(const std::string &inverter_name, uint8_t grid_phase);
 
   float get_voltage(int phase);
@@ -146,7 +146,7 @@ class OpenDtuSdm630 : public Component
   void process_livedata_(const char *json, size_t len);
   void publish_state_();
   float json_field_v_(const cJSON *ac0, const char *key);
-  int resolve_microinverter_index_(const cJSON *inverters, const MicroinverterMapEntry &entry);
+  int find_inverter_index_(const cJSON *inverters, const MicroinverterMapEntry &entry);
 
   bool ws_buf_ensure_(size_t needed);
   void start_websocket_();
