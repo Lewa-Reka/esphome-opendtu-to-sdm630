@@ -62,40 +62,28 @@ For AC Couple on Load Side with **Grid Tie Meter 2** enabled, Deye always polls 
 
 ```mermaid
 flowchart TB
-  subgraph property ["Property - separate grid feed-in points"]
-    direction LR
-    subgraph feed_l1 ["Grid feed-in L1"]
-      mi_l1["HMS shed"]
-    end
-    subgraph feed_l2 ["Grid feed-in L2"]
-      direction TB
-      mi_l2_1["HMS 1"]
-      mi_l2_2["HMS 2"]
-      mi_l2_3["HMS 3"]
-      mi_l2_4["HMS 4"]
-    end
-    subgraph feed_l3a ["Grid feed-in L3"]
-      mi_l3a["HMS garage"]
-    end
-    subgraph feed_l3b ["Grid feed-in L3"]
-      mi_l3b["HMS roof"]
-    end
+  subgraph feed_l1 ["Grid feed-in L1"]
+    mi_l1["MI HMS shed"]
+  end
+  subgraph feed_l2 ["Grid feed-in L2"]
+    mi_l2["MI HMS fence"]
+  end
+  subgraph feed_l3 ["Grid feed-in L3"]
+    mi_l3a["MI HMS garage"]
+    mi_l3b["MI HMS roof"]
   end
   odtu["OpenDTU ESP32"]
   bridge["opendtu sdm630 ESP32"]
   deye["Deye hybrid inverter"]
   mi_l1 -->|RF| odtu
-  mi_l2_1 -->|RF| odtu
-  mi_l2_2 -->|RF| odtu
-  mi_l2_3 -->|RF| odtu
-  mi_l2_4 -->|RF| odtu
+  mi_l2 -->|RF| odtu
   mi_l3a -->|RF| odtu
   mi_l3b -->|RF| odtu
   odtu -->|WebSocket livedata| bridge
   bridge -->|Modbus RTU SDM630| deye
 ```
 
-Each microinverter only needs radio reach to **OpenDTU** - not a cable run to the inverter or a shared RS485 bus. The bridge merges per-phase values from every mapped inverter before Deye reads one emulated meter.
+Each microinverter (**MI**) only needs radio reach to **OpenDTU** - not a cable run to the inverter or a shared RS485 bus. The bridge merges per-phase values from every mapped inverter before Deye reads one emulated meter.
 
 - Parses OpenDTU livedata JSON (`inverters[].AC["0"]` → voltage, current, power, frequency)
 - Maps microinverters to grid phases via `microinverter_map` (several inverters can share a phase; current and power are summed)
