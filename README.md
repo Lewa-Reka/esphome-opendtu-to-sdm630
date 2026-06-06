@@ -300,7 +300,7 @@ OTA updates work through the ESPHome dashboard or `esphome upload` over the netw
 
 ## License
 
-This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ### Copyright Notice
 
