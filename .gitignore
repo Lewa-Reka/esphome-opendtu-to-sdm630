@@ -1,5 +1,6 @@
 /.esphome/
 /secrets.yaml
+/tests/secrets.yaml
 
 /.vscode/
 /.cursor/

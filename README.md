@@ -1,7 +1,25 @@
 # ESPHome OpenDTU to SDM630 Component
 
-[![License](https://img.shields.io/github/license/Lewa-Reka/esphome-opendtu-to-sdm630)](LICENSE)
-[![OpenDTU](https://img.shields.io/badge/requires-OpenDTU-2E7D32)](https://github.com/tbnobody/OpenDTU)
+<!--
+SPDX-License-Identifier: Apache-2.0
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+![Maintenance](https://img.shields.io/maintenance/yes/2026?style=for-the-badge)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Lewa-Reka/esphome-opendtu-to-sdm630/build-ci.yaml?style=for-the-badge)
+![GitHub License](https://img.shields.io/github/license/Lewa-Reka/esphome-opendtu-to-sdm630?style=for-the-badge)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/y/Lewa-Reka/esphome-opendtu-to-sdm630?style=for-the-badge)
 
 ESPHome external component that bridges [OpenDTU](https://github.com/tbnobody/OpenDTU) microinverter data to a Modbus RTU **Eastron SDM630** energy meter emulator.
 
@@ -147,7 +165,7 @@ All options under `opendtu_sdm630:`:
 
 Each entry requires `grid_phase` (`1` = L1, `2` = L2, `3` = L3) and **exactly one** identifier:
 
-- `serial` — microinverter serial from OpenDTU livedata (`inverters[].serial`); stable if you rename the inverter in OpenDTU
+- `serial` - microinverter serial from OpenDTU livedata (`inverters[].serial`); stable if you rename the inverter in OpenDTU
 - `name` - microinverter name from OpenDTU livedata (`inverters[].name`)
 
 `serial` and `name` cannot be used in the same entry.
@@ -282,4 +300,26 @@ OTA updates work through the ESPHome dashboard or `esphome upload` over the netw
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full text.
+This project is licensed under the Apache License 2.0 — see the [LICENSE](LICENSE) file for details.
+
+### Copyright Notice
+
+```
+Copyright 2026 Lewa-Reka <lewareka.yt@gmail.com>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+### Third-Party Components
+
+This project uses ESPHome and related components. Please refer to the [NOTICE](NOTICE) file for additional license information.

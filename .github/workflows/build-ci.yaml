@@ -1,0 +1,35 @@
+name: Build CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 8 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ci:
+    name: Building opendtu_sdm630_ci / ${{ matrix.esphome-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        esphome-version:
+          - stable
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Create secrets.yaml
+        run: cp secrets.yaml.example tests/secrets.yaml
+
+      - name: ESPHome ${{ matrix.esphome-version }}
+        uses: esphome/build-action@v7
+        with:
+          yaml-file: tests/opendtu_sdm630_ci.yaml
+          version: ${{ matrix.esphome-version }}
